@@ -1,0 +1,40 @@
+[build-system]
+requires = [
+    "setuptools",
+    "setuptools_scm",
+]
+
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "some_pkg"
+version = "0.2.0"
+description = "An scalable map-making package for CMB experiments"
+authors = [
+    { name = "Avinash Anand", email = "avinash.anand@roma2.infn.it" },
+]
+keywords = ["brahmap", "cmb", "sky map", "map-maker", "map-making"]
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "numpy",
+    "pre-commit",
+    "pytest",
+]
+
+[project.urls]
+Repository = "https://github.com/anand-avinash/BrahMap"
+Documentation = "https://anand-avinash.github.io/BrahMap/"
+Issues = "https://github.com/anand-avinash/BrahMap/issues"
+# Changelog =
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["some_pkg*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+norecursedirs = ["extern"]
+
+[tool.setuptools_scm]
+
