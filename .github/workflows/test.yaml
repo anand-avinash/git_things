@@ -28,7 +28,8 @@ jobs:
       run: |
         if [[ "${{ matrix.mpi }}" == "openmpi" ]]; then
           # wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.3.tar.gz
-          wget https://download.open-mpi.org/release/open-mpi/v${{ env.OPENMPI_VERSION:0:1 }}/openmpi-${{ env.OPENMPI_VERSION }}.tar.gz
+          OPENMPI_MAJOR_MINOR_VERSION=$(echo ${{ env.OPENMPI_VERSION }} | cut -d. -f1,2)
+          wget https://download.open-mpi.org/release/open-mpi/v${{OPENMPI_MAJOR_MINOR_VERSION}}/openmpi-${{ env.OPENMPI_VERSION }}.tar.gz
           tar -xzf openmpi-${{ env.OPENMPI_VERSION }}.tar.gz
           cd openmpi-${{ env.OPENMPI_VERSION }}
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
