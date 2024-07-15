@@ -1,0 +1,100 @@
+### Running pytest
+
+# setting up testing: <https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#testing-your-code>
+# setting up compiler: <https://github.com/marketplace/actions/setup-c-c-compiler>
+
+name: Tests
+run-name: Testing BrahMap
+on: [push]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        mpi: ["mpich", "openmpi"]
+        # Excluding the following because it is failing and remains stalled, without any useful error message
+        exclude:
+          - os: ubuntu-latest
+            mpi: mpich
+            python-version: "3.9"
+
+    env:
+      OPENMPI_VER: 5.0.3
+      MPICH_VER: 4.2.2
+      LLVM_VER: llvm@15
+
+    steps:
+      - uses: actions/checkout@v4.1.5
+        with:
+          submodules: true
+
+      - name: setup for macos
+        run: |
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew install libomp
+            brew_prefix=$(brew --prefix)
+            export CC=/usr/bin/clang
+            export CXX=/usr/bin/clang++
+            export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+            export CFLAGS="$CFLAGS -I$brew_prefix/opt/libomp/include"
+            export CXXFLAGS="$CXXFLAGS -I$brew_prefix/opt/libomp/include"
+            export LDFLAGS="$LDFLAGS -Wl,-rpath,$brew_prefix/opt/libomp/lib -L$brew_prefix/opt/libomp/lib -lomp"
+          fi
+
+      - name: Install MPI ${{ matrix.mpi }}
+        uses: mpi4py/setup-mpi@v1
+        with:
+          mpi: ${{ matrix.mpi }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify MPI Installation
+        run: |
+          mpicxx --version
+          which mpirun
+          mpirun --help
+
+      - name: Install mpi4py
+        run: |
+          # if [[ "${{ matrix.mpi }}" == "openmpi" ]]; then
+          #   export MPICC=/usr/local/openmpi/bin/mpicc
+          # elif [[ "${{ matrix.mpi }}" == "mpich" ]]; then
+          #   export MPICC=/usr/local/mpich/bin/mpicc
+          # fi
+          python3 -m pip install mpi4py
+
+      - name: Verify mpi4py Installation
+        run: |
+          python3 -c "import mpi4py; print(mpi4py.__version__)"
+          python3 -c "import mpi4py; print(mpi4py.get_config())"
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew_prefix=$(brew --prefix)
+            export CC=/usr/bin/clang
+            export CXX=/usr/bin/clang++
+            export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+            export CFLAGS="$CFLAGS -I$brew_prefix/opt/libomp/include"
+            export CXXFLAGS="$CXXFLAGS -I$brew_prefix/opt/libomp/include"
+            export LDFLAGS="$LDFLAGS -Wl,-rpath,$brew_prefix/opt/libomp/lib -L$brew_prefix/opt/libomp/lib -lomp"
+            if [[ "${{ matrix.mpi }}" == "mpich" ]]; then
+              mpicxx -cxx=$(brew --prefix llvm@15)/bin/clang++ -fopenmp .github/workflows/sample.cpp -o .github/workflows/sample
+            elif [[ "${{ matrix.mpi }}" == "openmpi" ]]; then
+              export OMPI_CC=$CC
+              export OMPI_CXX=$CXX
+              export OMPI_CPPFLAGS=$CPPFLAGS
+              export OMPI_CFLAGS=$CFLAGS
+              export OMPI_CXXFLAGS=$CXXFLAGS
+              export OMPI_LDFLAGS=$LDFLAGS
+              mpicxx -fopenmp .github/workflows/samples.cpp -o .github/workflows/sample
+            fi
+          elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            mpicxx -fopenmp .github/workflows/sample.cpp -o .github/workflows/sample
+          fi
+          export OMP_NUM_THREADS=2
+          mpicxx -n 2 .github/workflows/sample

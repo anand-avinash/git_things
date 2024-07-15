@@ -1,0 +1,101 @@
+name: Build and Test MPI
+
+# at 676cc7e, test is passing for all ubuntu cases. For macos-latest, building openmpi is failing with `configure: error: Could not determine global symbol label prefix`. For macos, building mpich is successful, but `mpi4py` installation is failing. See the link below for details
+# <https://github.com/anand-avinash/git_things/actions/runs/9940535792/job/27457469310>
+
+# at ,534a7b1 all the tests are passing except for macos openmpi, where the installation of openmpi is failing.
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13]
+        mpi: [openmpi, mpich]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        exclude:
+          - os: ubuntu-latest
+            mpi: mpich
+            python-version: "3.9"
+
+    env:
+      OPENMPI_VERSION: 4.1.2
+      MPICH_VERSION: 3.4.3
+      LLVM_VERSION: llvm@15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install MPI
+      run: |
+        if [[ "${{ matrix.mpi }}" == "openmpi" ]]; then
+          # wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.3.tar.gz
+          OPENMPI_MAJOR_MINOR_VERSION=$(echo ${{ env.OPENMPI_VERSION }} | cut -d. -f1,2)
+          wget https://download.open-mpi.org/release/open-mpi/v${OPENMPI_MAJOR_MINOR_VERSION}/openmpi-${{ env.OPENMPI_VERSION }}.tar.gz
+          tar -xzf openmpi-${{ env.OPENMPI_VERSION }}.tar.gz
+          cd openmpi-${{ env.OPENMPI_VERSION }}
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            export CC=gcc
+            export CXX=g++
+            export FC=gfortran
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang -Xassembler
+            export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++ -Xassembler
+            export FC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/gfortran
+            export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
+            export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
+          fi
+          ./configure --prefix=/usr/local/openmpi --disable-dependency-tracking --enable-mpi-fortran=none
+          make -j2
+          sudo make install
+          echo "/usr/local/openmpi/bin" >> $GITHUB_PATH
+        elif [[ "${{ matrix.mpi }}" == "mpich" ]]; then
+          wget https://www.mpich.org/static/downloads/${{ env.MPICH_VERSION }}/mpich-${{ env.MPICH_VERSION }}.tar.gz
+          tar -xzf mpich-${{ env.MPICH_VERSION }}.tar.gz
+          cd mpich-${{ env.MPICH_VERSION }}
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            export CC=gcc
+            export CXX=g++
+            export FC=gfortran
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang
+            export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++
+            export FC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/gfortran
+            export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
+            export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
+          fi
+          ./configure --prefix=/usr/local/mpich --disable-fortran --disable-dependency-tracking --disable-doc --with-device=ch3:nemesis
+          make -j2
+          sudo make install
+          echo "/usr/local/mpich/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Verify MPI Installation
+      run: |
+        mpirun --version
+        which mpirun
+        mpirun --help
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5.1.0
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install mpi4py
+      run: |
+        if [[ "${{ matrix.mpi }}" == "openmpi" ]]; then
+          export MPICC=/usr/local/openmpi/bin/mpicc
+        elif [[ "${{ matrix.mpi }}" == "mpich" ]]; then
+          export MPICC=/usr/local/mpich/bin/mpicc
+        fi
+        python3 -m pip install mpi4py
+
+    - name: Verify mpi4py Installation
+      run: |
+        python3 -c "import mpi4py; print(mpi4py.__version__)"
+        python3 -c "import mpi4py; print(mpi4py.get_config())"
+
