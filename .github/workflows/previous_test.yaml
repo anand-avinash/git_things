@@ -3,6 +3,8 @@ name: Build and Test MPI
 # at 676cc7e, test is passing for all ubuntu cases. For macos-latest, building openmpi is failing with `configure: error: Could not determine global symbol label prefix`. For macos, building mpich is successful, but `mpi4py` installation is failing. See the link below for details
 # <https://github.com/anand-avinash/git_things/actions/runs/9940535792/job/27457469310>
 
+# at ,534a7b1 all the tests are passing except for macos openmpi, where the installation of openmpi is failing.
+
 on: [push]
 
 jobs:
@@ -41,8 +43,8 @@ jobs:
             export CXX=g++
             export FC=gfortran
           elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang
-            export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++
+            export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang -Xassembler
+            export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++ -Xassembler
             export FC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/gfortran
             export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
             export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
