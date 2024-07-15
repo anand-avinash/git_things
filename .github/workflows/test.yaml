@@ -74,6 +74,17 @@ jobs:
         run: |
           python3 -c "import mpi4py; print(mpi4py.__version__)"
           python3 -c "import mpi4py; print(mpi4py.get_config())"
-          mpicxx -fopenmp .github/workflows/sample.cpp -o sample
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew_prefix=$(brew --prefix)
+            export CC=/usr/bin/clang
+            export CXX=/usr/bin/clang++
+            export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+            export CFLAGS="$CFLAGS -I$brew_prefix/opt/libomp/include"
+            export CXXFLAGS="$CXXFLAGS -I$brew_prefix/opt/libomp/include"
+            export LDFLAGS="$LDFLAGS -Wl,-rpath,$brew_prefix/opt/libomp/lib -L$brew_prefix/opt/libomp/lib -lomp"
+            mpicxx --cxx=$(brew --prefix llvm@15)/bin/clang++ -fopenmp .github/workflows/sample.cpp -o sample
+          elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            mpicxx -fopenmp ./github/workflows/sample.cpp -o sample
+          fi
           export OMP_NUM_THREADS=2
-          mpicxx -n 2 ./sample
+          mpicxx -n 2 ./github/workflows/sample
