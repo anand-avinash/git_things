@@ -63,7 +63,7 @@ jobs:
             export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
             export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
           fi
-          ./configure --prefix=/usr/local/mpich --with-device=ch3:nemesis
+          ./configure --prefix=/usr/local/mpich --disable-fortran --with-device=ch3:nemesis
           make -j2
           sudo make install
           echo "/usr/local/mpich/bin" >> $GITHUB_PATH
