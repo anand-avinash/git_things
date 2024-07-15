@@ -1,6 +1,9 @@
 name: Build and Test MPI
 
-on: [push, pull_request]
+# at 676cc7e, test is passing for all ubuntu cases. For macos-latest, building openmpi is failing with `configure: error: Could not determine global symbol label prefix`. For macos, building mpich is successful, but `mpi4py` installation is failing. See the link below for details
+# <https://github.com/anand-avinash/git_things/actions/runs/9940535792/job/27457469310>
+
+on: [push]
 
 jobs:
   build:
@@ -8,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-13]
         mpi: [openmpi, mpich]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         exclude:
@@ -44,7 +47,7 @@ jobs:
             export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
             export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
           fi
-          ./configure --prefix=/usr/local/openmpi
+          ./configure --prefix=/usr/local/openmpi --disable-dependency-tracking --enable-mpi-fortran=none
           make -j2
           sudo make install
           echo "/usr/local/openmpi/bin" >> $GITHUB_PATH
@@ -63,7 +66,7 @@ jobs:
             export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
             export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
           fi
-          ./configure --prefix=/usr/local/mpich --disable-fortran --with-device=ch3:nemesis
+          ./configure --prefix=/usr/local/mpich --disable-fortran --disable-dependency-tracking --disable-doc --with-device=ch3:nemesis
           make -j2
           sudo make install
           echo "/usr/local/mpich/bin" >> $GITHUB_PATH
