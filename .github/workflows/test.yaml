@@ -41,6 +41,8 @@ jobs:
             export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang
             export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++
             export FC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/gfortran
+            export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
+            export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
           fi
           ./configure --prefix=/usr/local/openmpi
           make -j2
@@ -58,8 +60,10 @@ jobs:
             export CC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang
             export CXX=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/clang++
             export FC=$(brew --prefix ${{ env.LLVM_VERSION }})/bin/gfortran
+            export CPPFLAGS="-I$(brew --prefix ${{ env.LLVM_VERSION }})/include"
+            export LDFLAGS="-L$(brew --prefix ${{ env.LLVM_VERSION }})/lib"
           fi
-          ./configure --prefix=/usr/local/mpich --with-device=ch4:tcp
+          ./configure --prefix=/usr/local/mpich --with-device=ch4:nemesis
           make -j2
           sudo make install
           echo "/usr/local/mpich/bin" >> $GITHUB_PATH
